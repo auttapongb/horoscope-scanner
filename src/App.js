@@ -6,12 +6,12 @@ const App = () => {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
-  const [log, setLog] = useState(''); // State to store logs for troubleshooting
+  const [log, setLog] = useState('');
 
-  // Fetch and log the current Tesseract version
+  const tesseractVersion = "5.0.0"; // Replace with your actual Tesseract version if known
+
   useEffect(() => {
-    const version = Tesseract.version || "unknown version";
-    updateLog(`Tesseract.js version: ${version}`);
+    updateLog(`Tesseract.js version: ${tesseractVersion}`);
   }, []);
 
   const handleImageChange = (e) => {
@@ -43,7 +43,6 @@ const App = () => {
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
 
-      // Apply preprocessing filters to enhance image quality
       ctx.filter = 'contrast(200%) brightness(150%)';
       ctx.drawImage(img, 0, 0);
 
@@ -54,19 +53,16 @@ const App = () => {
 
           setLoading(true);
 
-          // Recognize both printed and handwritten characters with appropriate settings
           Tesseract.recognize(imageURL, 'eng+tha', {
             tessedit_char_whitelist: '0123456789- ',
-            psm: 6, // Page Segmentation Mode: Assume uniform block of text
+            psm: 6,
           })
             .then(({ data: { text } }) => {
               updateLog(`OCR completed. Raw text:\n${text}`);
               
-              // Clean up the text to help with number detection
               const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
               updateLog(`Cleaned OCR text:\n${cleanedText}`);
 
-              // Split text into lines for detailed analysis
               const lines = cleanedText.split('\n');
               const mobileNumbers = new Set();
 
@@ -74,23 +70,20 @@ const App = () => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  if (/^0[689]\d{8}$/.test(word)) { 
-                    mobileNumbers.add(word);
-                  } else if (/^0[689]\d[\s-]?\d{3}[\s-]?\d{4}$/.test(word)) { 
-                    mobileNumbers.add(word);
-                  } else if (/^0[689]\d{2}[\s-]?\d{3}[\s-]?\d{3}$/.test(word)) { 
+                  // Regex to match various mobile number formats
+                  if (/^0[689]\d{1}[-\s]?\d{3}[-\s]?\d{4}$/.test(word) || // Mobile: 0X-XXX-XXXX or 0X XXX XXXX
+                      /^0[689]\d[-\s]?\d{3}[-\s]?\d{3}$/.test(word) ||     // Mobile alternative: 0X-XXX-XXX
+                      /^02[-\s]?\d{3}[-\s]?\d{4}$/.test(word)) {           // Landline: 02-XXX-XXXX
                     mobileNumbers.add(word);
                   }
                 });
               });
 
-              // Convert Set to Array and Log Detected Numbers
               const detectedNumbers = Array.from(mobileNumbers);
               detectedNumbers.forEach((number, idx) => {
                 updateLog(`Detected mobile number ${idx + 1}: ${number}`);
               });
 
-              // Prepare results for display
               const processedResults = detectedNumbers.map((num) => ({
                 number: num,
                 sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
