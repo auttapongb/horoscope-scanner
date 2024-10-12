@@ -58,7 +58,7 @@ const App = () => {
             psm: 6,
           })
             .then(({ data: { text } }) => {
-              updateLog(`OCR completed. Raw text:\na****************************************`);
+              updateLog(`OCR completed. Raw text:\n****************************************`);
               
               const lines = text.split('\n');
               lines.forEach((line, index) => {
@@ -75,10 +75,10 @@ const App = () => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  updateLog(`Checking word: "${word}"`);  // Enhanced logging for each word
+                  updateLog(`Checking word: "${word}"`);
 
-                  // Flexible regex for mobile/landline numbers with various delimiters
-                  const numberRegex = /^0(6|8|9)\d{1}[-.\s]?\d{3}[-.\s]?\d{4}$|^0(6|8|9)\d{1}[-.\s]?\d{4}[-.\s]?\d{3}$|^02[-.\s]?\d{3}[-.\s]?\d{4}$|^0[3-9]\d{1}[-.\s]?\d{3}[-.\s]?\d{4}$/;
+                  // Simplified regex to match Thai phone numbers with any delimiter
+                  const numberRegex = /^0\d{1}[-.\s]?\d{3}[-.\s]?\d{4}$|^0\d{1}[-.\s]?\d{4}[-.\s]?\d{3}$/;
 
                   if (numberRegex.test(word)) {
                     phoneNumbers.add(word);
@@ -133,24 +133,4 @@ const App = () => {
         <button onClick={scanImage} disabled={loading}>
           {loading ? 'Scanning...' : 'Scan Image'}
         </button>
-        {image && <img src={image} alt="Selected to scan" />}
-      </div>
-      <div className="results">
-        {results.length > 0 && <h2>Scanned Numbers & Their Sums</h2>}
-        <ul>
-          {results.map((result, index) => (
-            <li key={index}>
-              Number: <strong>{result.number}</strong> - Sum: <strong>{result.sum}</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="log-section">
-        <h2>Logs</h2>
-        <pre>{log}</pre>
-      </div>
-    </div>
-  );
-};
-
-export default App;
+        {image && <img src={image} alt="Se
