@@ -8,10 +8,10 @@ const App = () => {
   const [results, setResults] = useState([]);
   const [log, setLog] = useState('');
 
-  const tesseractVersion = "5.0.0"; // Replace with your actual Tesseract version if known
+  const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
 
   useEffect(() => {
-    updateLog(`Tesseract.js version: ${tesseractVersion}`);
+    updateLog(`Latest commit message: ${commitMessage}`);
   }, []);
 
   const handleImageChange = (e) => {
@@ -54,40 +54,38 @@ const App = () => {
           setLoading(true);
 
           Tesseract.recognize(imageURL, 'eng+tha', {
-            tessedit_char_whitelist: '0123456789- ',
+            tessedit_char_whitelist: '0123456789- .',
             psm: 6,
           })
             .then(({ data: { text } }) => {
               updateLog(`OCR completed. Raw text:\n****************************************`);
               
-              // Split the text into lines and prefix with line numbers for clarity
               const lines = text.split('\n');
               lines.forEach((line, index) => {
                 updateLog(`L${index + 1}: ${line}`);
               });
               updateLog(`*******************************************************`);
 
-              // Clean up the text and continue with processing
               const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
               updateLog(`Cleaned OCR text:\n${cleanedText}`);
 
-              const mobileNumbers = new Set();
+              const phoneNumbers = new Set();
 
               lines.forEach((line, index) => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  const mobileRegex = /^(0[689]\d[-\s]?\d{3}[-\s]?\d{4})$|^(0[689]\d{1}[-\s]?\d{4}[-\s]?\d{3})$/;
-                  const landlineRegex = /^02[-\s]?\d{3}[-\s]?\d{4}$/;
+                  // Comprehensive regex for Thai mobile and landline numbers with optional delimiters
+                  const numberRegex = /^(0[689]\d{1}[-\s.]?\d{3}[-\s.]?\d{4})$|^(0[689]\d{1}[-\s.]?\d{4}[-\s.]?\d{3})$|^(02[-\s.]?\d{3}[-\s.]?\d{4})$|^(0[3-9]\d{1}[-\s.]?\d{3}[-\s.]?\d{4})$/;
 
-                  if (mobileRegex.test(word) || landlineRegex.test(word)) {
-                    mobileNumbers.add(word);
+                  if (numberRegex.test(word)) {
+                    phoneNumbers.add(word);
                     updateLog(`Matched mobile/landline number: ${word}`);
                   }
                 });
               });
 
-              const detectedNumbers = Array.from(mobileNumbers);
+              const detectedNumbers = Array.from(phoneNumbers);
               detectedNumbers.forEach((number, idx) => {
                 updateLog(`Detected mobile number ${idx + 1}: ${number}`);
               });
