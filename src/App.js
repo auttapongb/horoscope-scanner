@@ -58,7 +58,7 @@ const App = () => {
             psm: 6,
           })
             .then(({ data: { text } }) => {
-              updateLog(`OCR completed. Raw text:\n****************************************`);
+              updateLog(`OCR completed. Raw text:\na****************************************`);
               
               const lines = text.split('\n');
               lines.forEach((line, index) => {
@@ -75,8 +75,10 @@ const App = () => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  // Refined regex pattern to capture mobile and landline numbers with various delimiters
-                  const numberRegex = /^0(6|8|9)\d{1}([-.\s]?\d{3}[-.\s]?\d{4})$|^0(6|8|9)\d{1}([-.\s]?\d{4}[-.\s]?\d{3})$|^02([-.\s]?\d{3}[-.\s]?\d{4})$|^0[3-9]\d{1}([-.\s]?\d{3}[-.\s]?\d{4})$/;
+                  updateLog(`Checking word: "${word}"`);  // Enhanced logging for each word
+
+                  // Flexible regex for mobile/landline numbers with various delimiters
+                  const numberRegex = /^0(6|8|9)\d{1}[-.\s]?\d{3}[-.\s]?\d{4}$|^0(6|8|9)\d{1}[-.\s]?\d{4}[-.\s]?\d{3}$|^02[-.\s]?\d{3}[-.\s]?\d{4}$|^0[3-9]\d{1}[-.\s]?\d{3}[-.\s]?\d{4}$/;
 
                   if (numberRegex.test(word)) {
                     phoneNumbers.add(word);
