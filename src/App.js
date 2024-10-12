@@ -12,7 +12,7 @@ const App = () => {
 
   useEffect(() => {
     updateLog(`Latest commit message: ${commitMessage}`);
-  }, [commitMessage]); // Ensure commitMessage is in the dependency array
+  }, [commitMessage]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -75,8 +75,8 @@ const App = () => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  // Comprehensive regex for Thai mobile and landline numbers with optional delimiters
-                  const numberRegex = /^(0[689]\d{1}[-\s.]?\d{3}[-\s.]?\d{4})$|^(0[689]\d{1}[-\s.]?\d{4}[-\s.]?\d{3})$|^(02[-\s.]?\d{3}[-\s.]?\d{4})$|^(0[3-9]\d{1}[-\s.]?\d{3}[-\s.]?\d{4})$/;
+                  // Refined regex pattern to capture mobile and landline numbers with various delimiters
+                  const numberRegex = /^0(6|8|9)\d{1}([-.\s]?\d{3}[-.\s]?\d{4})$|^0(6|8|9)\d{1}([-.\s]?\d{4}[-.\s]?\d{3})$|^02([-.\s]?\d{3}[-.\s]?\d{4})$|^0[3-9]\d{1}([-.\s]?\d{3}[-.\s]?\d{4})$/;
 
                   if (numberRegex.test(word)) {
                     phoneNumbers.add(word);
