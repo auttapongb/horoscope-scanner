@@ -36,6 +36,9 @@ const App = () => {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
+
+      // Apply preprocessing filters to improve OCR accuracy
+      ctx.filter = 'contrast(150%) brightness(120%)';
       ctx.drawImage(img, 0, 0);
 
       canvas.toBlob((blob) => {
@@ -45,13 +48,16 @@ const App = () => {
 
           setLoading(true);
 
-          Tesseract.recognize(imageURL, 'eng')
+          // Recognize both English and Thai characters
+          Tesseract.recognize(imageURL, 'eng+tha')
             .then(({ data: { text } }) => {
               updateLog(`OCR completed. Extracted text:\n${text}`);
-              const mobileNumbers = text.match(/0[689]{1}[0-9]{8}/g) || [];
+
+              // Adjust regex to match various mobile number formats with dashes or spaces
+              const mobileNumbers = text.match(/0[689]\d[\s-]?\d{3}[\s-]?\d{4}|0[89]\d-\d{3}-\d{4}|0[89]\d-\d{3}-\d{3}/g) || [];
               const processedResults = mobileNumbers.map((num) => ({
                 number: num,
-                sum: num.split('').reduce((acc, curr) => acc + parseInt(curr), 0),
+                sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
               }));
               setResults(processedResults);
               setLoading(false);
