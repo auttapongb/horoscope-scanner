@@ -77,8 +77,8 @@ const App = () => {
                 words.forEach((word) => {
                   updateLog(`Checking word: "${word}"`);
 
-                  // Simplified regex to match Thai phone numbers with any delimiter
-                  const numberRegex = /^0\d{1}[-.\s]?\d{3}[-.\s]?\d{4}$|^0\d{1}[-.\s]?\d{4}[-.\s]?\d{3}$/;
+                  // Refined regex for flexible separators and 10-digit format
+                  const numberRegex = /^0\d([-.\s]?\d){8,9}$/;
 
                   if (numberRegex.test(word)) {
                     phoneNumbers.add(word);
@@ -133,4 +133,7 @@ const App = () => {
         <button onClick={scanImage} disabled={loading}>
           {loading ? 'Scanning...' : 'Scan Image'}
         </button>
-        {image && <img src={image} alt="Se
+        {image && <img src={image} alt="Selected to scan" />}
+      </div>
+      <div className="results">
+        
