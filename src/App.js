@@ -16,7 +16,7 @@ const App = () => {
 
   const scanImage = () => {
     if (!image) {
-      console.log("No image selected");
+      console.log("No image selected na1");
       return;
     }
     
@@ -40,6 +40,7 @@ const App = () => {
   };
 
   return (
+
     <div className="app">
       <h1>Horoscope Scanner</h1>
       <div className="upload-container">
