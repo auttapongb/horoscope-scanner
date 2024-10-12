@@ -77,7 +77,7 @@ const App = () => {
                 words.forEach((word) => {
                   updateLog(`Checking word: "${word}"`);
 
-                  // Refined regex for flexible separators and 10-digit format
+                  // Regex for Thai phone numbers with flexible separators and lengths
                   const numberRegex = /^0\d([-.\s]?\d){8,9}$/;
 
                   if (numberRegex.test(word)) {
@@ -135,5 +135,26 @@ const App = () => {
         </button>
         {image && <img src={image} alt="Selected to scan" />}
       </div>
+
       <div className="results">
-        
+        {results.length > 0 && (
+          <h2>Scanned Numbers & Their Sums</h2>
+        )}
+        <ul>
+          {results.map((result, index) => (
+            <li key={index}>
+              Number: <strong>{result.number}</strong> - Sum: <strong>{result.sum}</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="log-section">
+        <h2>Logs</h2>
+        <pre>{log}</pre>
+      </div>
+    </div>
+  );
+};
+
+export default App;
