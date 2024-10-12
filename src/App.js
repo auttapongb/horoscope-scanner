@@ -16,15 +16,13 @@ const App = () => {
 
   const scanImage = () => {
     if (!image) {
-      console.log("No image selected na1");
+      alert("Please select an image first.");
       return;
     }
-    
-    console.log("Starting OCR...");
+
     setLoading(true);
     Tesseract.recognize(image, 'eng')
       .then(({ data: { text } }) => {
-        console.log("OCR Result:", text);
         const mobileNumbers = text.match(/0[689]{1}[0-9]{8}/g) || [];
         const processedResults = mobileNumbers.map((num) => ({
           number: num,
@@ -40,7 +38,6 @@ const App = () => {
   };
 
   return (
-
     <div className="app">
       <h1>Horoscope Scanner</h1>
       <div className="upload-container">
@@ -48,11 +45,15 @@ const App = () => {
           type="file"
           accept="image/*"
           onChange={handleImageChange}
+          id="file-upload"
         />
-        {image && <img src={image} alt="Selected to scan" />}
+        <label htmlFor="file-upload" className="file-upload-label">
+          Choose Image
+        </label>
         <button onClick={scanImage} disabled={loading}>
           {loading ? 'Scanning...' : 'Scan Image'}
         </button>
+        {image && <img src={image} alt="Selected to scan" />}
       </div>
       <div className="results">
         {results.length > 0 && <h2>Scanned Numbers & Their Sums</h2>}

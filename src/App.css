@@ -1,5 +1,4 @@
 .app {
-  
   font-family: Arial, sans-serif;
   text-align: center;
   padding: 20px;
@@ -13,18 +12,14 @@ input[type="file"] {
   display: none;
 }
 
-label {
+.file-upload-label {
+  display: inline-block;
   background-color: #007bff;
   color: white;
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-}
-
-img {
-  margin-top: 20px;
-  max-width: 100%;
-  height: auto;
+  margin-right: 10px;
 }
 
 button {
@@ -34,7 +29,12 @@ button {
   padding: 10px 20px;
   border-radius: 5px;
   cursor: pointer;
-  margin-top: 10px;
+}
+
+img {
+  margin-top: 20px;
+  max-width: 100%;
+  height: auto;
 }
 
 .results {
