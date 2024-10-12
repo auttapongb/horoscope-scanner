@@ -37,8 +37,8 @@ const App = () => {
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
 
-      // Apply preprocessing filters to improve OCR accuracy
-      ctx.filter = 'contrast(150%) brightness(120%)';
+      // Apply preprocessing filters to enhance image contrast and brightness
+      ctx.filter = 'contrast(200%) brightness(130%)';
       ctx.drawImage(img, 0, 0);
 
       canvas.toBlob((blob) => {
@@ -48,34 +48,50 @@ const App = () => {
 
           setLoading(true);
 
-          Tesseract.recognize(imageURL, 'eng+tha')
+          // Recognize both printed and handwritten characters
+          Tesseract.recognize(imageURL, 'eng+tha', {
+            tessedit_char_whitelist: '0123456789- ', // limit to numbers and dashes for better accuracy
+            psm: 6, // Assume a single uniform block of text
+          })
             .then(({ data: { text } }) => {
               updateLog(`OCR completed. Raw text:\n${text}`);
               
-              // Clean up extracted text by removing special characters and logging each step
+              // Clean up the text to make number detection more reliable
               const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
               updateLog(`Cleaned OCR text:\n${cleanedText}`);
 
-              // Split text into lines and analyze each line for mobile numbers
+              // Split text into lines and process each word individually
               const lines = cleanedText.split('\n');
+              const mobileNumbers = new Set();
+
               lines.forEach((line, index) => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
+                const words = line.split(' ');
+                words.forEach((word) => {
+                  if (/^0[689]\d{8}$/.test(word)) { 
+                    mobileNumbers.add(word);
+                  } else if (/^0[689]\d[\s-]?\d{3}[\s-]?\d{4}$/.test(word)) { 
+                    mobileNumbers.add(word);
+                  } else if (/^0[689]\d{2}[\s-]?\d{3}[\s-]?\d{3}$/.test(word)) { 
+                    mobileNumbers.add(word);
+                  }
+                });
               });
 
-              // Adjust regex to match various mobile number formats with flexible spacing or dashes
-              const mobileNumbers = cleanedText.match(/0[689]\d[\s-]?\d{3}[\s-]?\d{4}/g) || [];
-              mobileNumbers.forEach((number, idx) => {
+              // Convert Set to Array and Log Detected Numbers
+              const detectedNumbers = Array.from(mobileNumbers);
+              detectedNumbers.forEach((number, idx) => {
                 updateLog(`Detected mobile number ${idx + 1}: ${number}`);
               });
 
-              const processedResults = mobileNumbers.map((num) => ({
+              // Prepare results for display
+              const processedResults = detectedNumbers.map((num) => ({
                 number: num,
                 sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
               }));
-              
               setResults(processedResults);
               setLoading(false);
-              updateLog(`Total mobile numbers found: ${mobileNumbers.length}`);
+              updateLog(`Total mobile numbers found: ${detectedNumbers.length}`);
             })
             .catch((err) => {
               console.error("Tesseract error:", err);
