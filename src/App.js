@@ -8,24 +8,33 @@ const App = () => {
   const [results, setResults] = useState([]);
 
   const handleImageChange = (e) => {
-    setImage(URL.createObjectURL(e.target.files[0]));
+    const file = e.target.files[0];
+    if (file) {
+      setImage(URL.createObjectURL(file));
+    }
   };
 
   const scanImage = () => {
-    if (!image) return;
+    if (!image) {
+      console.log("No image selected");
+      return;
+    }
+    
+    console.log("Starting OCR...");
     setLoading(true);
     Tesseract.recognize(image, 'eng')
       .then(({ data: { text } }) => {
+        console.log("OCR Result:", text);
         const mobileNumbers = text.match(/0[689]{1}[0-9]{8}/g) || [];
-        const results = mobileNumbers.map((num) => ({
+        const processedResults = mobileNumbers.map((num) => ({
           number: num,
           sum: num.split('').reduce((acc, curr) => acc + parseInt(curr), 0),
         }));
-        setResults(results);
+        setResults(processedResults);
         setLoading(false);
       })
       .catch((err) => {
-        console.error(err);
+        console.error("Tesseract error:", err);
         setLoading(false);
       });
   };
@@ -34,9 +43,13 @@ const App = () => {
     <div className="app">
       <h1>Horoscope Scanner</h1>
       <div className="upload-container">
-        <input type="file" onChange={handleImageChange} />
-        {image && <img src={image} alt="To be scanned" />}
-        <button onClick={scanImage} disabled={!image || loading}>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+        />
+        {image && <img src={image} alt="Selected to scan" />}
+        <button onClick={scanImage} disabled={loading}>
           {loading ? 'Scanning...' : 'Scan Image'}
         </button>
       </div>
@@ -55,5 +68,3 @@ const App = () => {
 };
 
 export default App;
-
-
