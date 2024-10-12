@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import './App.css';
 
@@ -7,6 +7,12 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [log, setLog] = useState(''); // State to store logs for troubleshooting
+
+  // Fetch and log the current Tesseract version
+  useEffect(() => {
+    const version = Tesseract.version || "unknown version";
+    updateLog(`Tesseract.js version: ${version}`);
+  }, []);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -37,8 +43,8 @@ const App = () => {
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
 
-      // Apply preprocessing filters to enhance image contrast and brightness
-      ctx.filter = 'contrast(200%) brightness(130%)';
+      // Apply preprocessing filters to enhance image quality
+      ctx.filter = 'contrast(200%) brightness(150%)';
       ctx.drawImage(img, 0, 0);
 
       canvas.toBlob((blob) => {
@@ -48,19 +54,19 @@ const App = () => {
 
           setLoading(true);
 
-          // Recognize both printed and handwritten characters
+          // Recognize both printed and handwritten characters with appropriate settings
           Tesseract.recognize(imageURL, 'eng+tha', {
-            tessedit_char_whitelist: '0123456789- ', // limit to numbers and dashes for better accuracy
-            psm: 6, // Assume a single uniform block of text
+            tessedit_char_whitelist: '0123456789- ',
+            psm: 6, // Page Segmentation Mode: Assume uniform block of text
           })
             .then(({ data: { text } }) => {
               updateLog(`OCR completed. Raw text:\n${text}`);
               
-              // Clean up the text to make number detection more reliable
+              // Clean up the text to help with number detection
               const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
               updateLog(`Cleaned OCR text:\n${cleanedText}`);
 
-              // Split text into lines and process each word individually
+              // Split text into lines for detailed analysis
               const lines = cleanedText.split('\n');
               const mobileNumbers = new Set();
 
