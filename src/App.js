@@ -58,19 +58,25 @@ const App = () => {
             psm: 6,
           })
             .then(({ data: { text } }) => {
-              updateLog(`OCR completed. Raw text:\n${text}`);
+              updateLog(`OCR completed. Raw text:\n****************************************`);
               
+              // Split the text into lines and prefix with line numbers for clarity
+              const lines = text.split('\n');
+              lines.forEach((line, index) => {
+                updateLog(`L${index + 1}: ${line}`);
+              });
+              updateLog(`*******************************************************`);
+
+              // Clean up the text and continue with processing
               const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
               updateLog(`Cleaned OCR text:\n${cleanedText}`);
 
-              const lines = cleanedText.split('\n');
               const mobileNumbers = new Set();
 
               lines.forEach((line, index) => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  // Enhanced regex for mobile numbers with multiple delimiter options
                   const mobileRegex = /^(0[689]\d[-\s]?\d{3}[-\s]?\d{4})$|^(0[689]\d{1}[-\s]?\d{4}[-\s]?\d{3})$/;
                   const landlineRegex = /^02[-\s]?\d{3}[-\s]?\d{4}$/;
 
