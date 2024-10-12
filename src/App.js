@@ -12,7 +12,7 @@ const App = () => {
 
   useEffect(() => {
     updateLog(`Latest commit message: ${commitMessage}`);
-  }, []);
+  }, [commitMessage]); // Ensure commitMessage is in the dependency array
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
