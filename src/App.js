@@ -70,11 +70,13 @@ const App = () => {
                 updateLog(`Analyzing line ${index + 1}: ${line}`);
                 const words = line.split(' ');
                 words.forEach((word) => {
-                  // Regex to match various mobile number formats
-                  if (/^0[689]\d{1}[-\s]?\d{3}[-\s]?\d{4}$/.test(word) || // Mobile: 0X-XXX-XXXX or 0X XXX XXXX
-                      /^0[689]\d[-\s]?\d{3}[-\s]?\d{3}$/.test(word) ||     // Mobile alternative: 0X-XXX-XXX
-                      /^02[-\s]?\d{3}[-\s]?\d{4}$/.test(word)) {           // Landline: 02-XXX-XXXX
+                  // Enhanced regex for mobile numbers with multiple delimiter options
+                  const mobileRegex = /^(0[689]\d[-\s]?\d{3}[-\s]?\d{4})$|^(0[689]\d{1}[-\s]?\d{4}[-\s]?\d{3})$/;
+                  const landlineRegex = /^02[-\s]?\d{3}[-\s]?\d{4}$/;
+
+                  if (mobileRegex.test(word) || landlineRegex.test(word)) {
                     mobileNumbers.add(word);
+                    updateLog(`Matched mobile/landline number: ${word}`);
                   }
                 });
               });
