@@ -48,20 +48,34 @@ const App = () => {
 
           setLoading(true);
 
-          // Recognize both English and Thai characters
           Tesseract.recognize(imageURL, 'eng+tha')
             .then(({ data: { text } }) => {
-              updateLog(`OCR completed. Extracted text:\n${text}`);
+              updateLog(`OCR completed. Raw text:\n${text}`);
+              
+              // Clean up extracted text by removing special characters and logging each step
+              const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
+              updateLog(`Cleaned OCR text:\n${cleanedText}`);
 
-              // Adjust regex to match various mobile number formats with dashes or spaces
-              const mobileNumbers = text.match(/0[689]\d[\s-]?\d{3}[\s-]?\d{4}|0[89]\d-\d{3}-\d{4}|0[89]\d-\d{3}-\d{3}/g) || [];
+              // Split text into lines and analyze each line for mobile numbers
+              const lines = cleanedText.split('\n');
+              lines.forEach((line, index) => {
+                updateLog(`Analyzing line ${index + 1}: ${line}`);
+              });
+
+              // Adjust regex to match various mobile number formats with flexible spacing or dashes
+              const mobileNumbers = cleanedText.match(/0[689]\d[\s-]?\d{3}[\s-]?\d{4}/g) || [];
+              mobileNumbers.forEach((number, idx) => {
+                updateLog(`Detected mobile number ${idx + 1}: ${number}`);
+              });
+
               const processedResults = mobileNumbers.map((num) => ({
                 number: num,
                 sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
               }));
+              
               setResults(processedResults);
               setLoading(false);
-              updateLog(`Found ${mobileNumbers.length} mobile numbers.`);
+              updateLog(`Total mobile numbers found: ${mobileNumbers.length}`);
             })
             .catch((err) => {
               console.error("Tesseract error:", err);
