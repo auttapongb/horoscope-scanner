@@ -10,11 +10,14 @@ const App = () => {
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
 
   // Define paths to worker files using absolute paths for Netlify compatibility
+ 
+
   const workerOptions = useMemo(() => ({
-    workerPath: '/tesseract-files/worker.min.js',
-    corePath: '/tesseract-files/tesseract-core.wasm.js',
-    langPath: '/tesseract-files',
+    workerPath: 'https://cdn.jsdelivr.net/gh/naptha/tesseract.js@v2.1.1/dist/worker.min.js',
+    corePath: 'https://cdn.jsdelivr.net/gh/naptha/tesseract.js-core@v0.1.0/tesseract-core.wasm.js',
+    langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@4.0.0_best/eng.traineddata',
   }), []);
+  
 
   const updateLog = (message) => {
     setLog((prevLog) => `${prevLog}\n${message}`);
