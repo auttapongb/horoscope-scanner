@@ -9,10 +9,11 @@ const App = () => {
 
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
 
+  // Define paths to worker files using absolute paths for Netlify compatibility
   const workerOptions = useMemo(() => ({
-    workerPath: './tesseract-files/worker.min.js',
-    corePath: './tesseract-files/tesseract-core.wasm.js',
-    langPath: './tesseract-files',
+    workerPath: '/tesseract-files/worker.min.js',
+    corePath: '/tesseract-files/tesseract-core.wasm.js',
+    langPath: '/tesseract-files',
   }), []);
 
   const updateLog = (message) => {
@@ -44,7 +45,7 @@ const App = () => {
     img.onload = () => {
       updateLog("Image loaded successfully.");
 
-      const maxDimension = 300; // Further reduced to enhance performance
+      const maxDimension = 300;
       const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
       const width = img.width * scale;
       const height = img.height * scale;
@@ -66,8 +67,15 @@ const App = () => {
 
         const imageURL = URL.createObjectURL(blob);
         updateLog("Canvas converted to blob. Starting OCR in separate thread...");
+        updateLog(`Worker Options - Worker Path: ${workerOptions.workerPath}, Core Path: ${workerOptions.corePath}`);
 
         const worker = new Worker(new URL('./ocrWorker.js', import.meta.url));
+
+        // Add error handler for the worker
+        worker.onerror = (error) => {
+          updateLog(`Worker error: ${error.message}`);
+          setLoading(false);
+        };
 
         const ocrTimeout = setTimeout(() => {
           updateLog("OCR process timed out. Try a smaller or simpler image.");
