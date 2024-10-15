@@ -61,7 +61,8 @@ const App = () => {
     img.onload = () => {
       updateLog("Image loaded successfully.");
 
-      const maxDimension = 800;
+      // Reduce image size for performance
+      const maxDimension = 600; // Reduce to improve performance
       const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
       const width = img.width * scale;
       const height = img.height * scale;
@@ -90,8 +91,8 @@ const App = () => {
           Tesseract.recognize(imageURL, 'eng+tha', {
             ...workerOptions,
             tessedit_char_whitelist: '0123456789- .',
-            psm: 6,
-            logger: (message) => updateLog(`Tesseract log: ${JSON.stringify(message)}`)
+            psm: 7, // Treat as a single line of text for faster processing
+            logger: (message) => updateLog(`Tesseract log: ${message.status} - ${Math.round(message.progress * 100)}%`)
           })
           .then(({ data: { text } }) => {
             updateLog("OCR completed successfully.");
