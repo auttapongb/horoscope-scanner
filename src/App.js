@@ -9,7 +9,6 @@ const App = () => {
 
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
 
-  // Memoize workerOptions to avoid re-creation on every render
   const workerOptions = useMemo(() => ({
     workerPath: './tesseract-files/worker.min.js',
     corePath: './tesseract-files/tesseract-core.wasm.js',
@@ -45,7 +44,7 @@ const App = () => {
     img.onload = () => {
       updateLog("Image loaded successfully.");
 
-      const maxDimension = 600;
+      const maxDimension = 300; // Further reduced to enhance performance
       const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
       const width = img.width * scale;
       const height = img.height * scale;
@@ -70,15 +69,24 @@ const App = () => {
 
         const worker = new Worker(new URL('./ocrWorker.js', import.meta.url));
 
+        const ocrTimeout = setTimeout(() => {
+          updateLog("OCR process timed out. Try a smaller or simpler image.");
+          setLoading(false);
+          worker.terminate();
+        }, 15000); // Timeout after 15 seconds
+
         worker.onmessage = (e) => {
           const { type, message, result, error } = e.data;
           if (type === 'progress') {
             updateLog(`Tesseract log: ${message.status} - ${Math.round(message.progress * 100)}%`);
+            clearTimeout(ocrTimeout); // Clear timeout on progress
           } else if (type === 'result') {
+            clearTimeout(ocrTimeout);
             updateLog("OCR completed successfully.");
             processOCRText(result);
             worker.terminate();
           } else if (type === 'error') {
+            clearTimeout(ocrTimeout);
             updateLog(`Error during OCR processing: ${error}`);
             setLoading(false);
             worker.terminate();
