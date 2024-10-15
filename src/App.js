@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Tesseract from 'tesseract.js';
 import './App.css';
 
@@ -7,7 +7,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [log, setLog] = useState('');
-  
+
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
   const workerOptions = {
     workerPath: './tesseract-files/worker.min.js',
@@ -15,24 +15,29 @@ const App = () => {
     langPath: './tesseract-files',
   };
 
-  useEffect(() => {
-    updateLog(`Latest commit message: ${commitMessage}`);
-    initializeTesseractWorker();
-  }, [commitMessage]);
+  const updateLog = (message) => {
+    setLog((prevLog) => `${prevLog}\n${message}`);
+  };
 
-  const initializeTesseractWorker = async () => {
+  // Wrap initializeTesseractWorker with useCallback to avoid unnecessary re-runs
+  const initializeTesseractWorker = useCallback(async () => {
     try {
       const worker = Tesseract.createWorker(workerOptions);
       await worker.load();
       await worker.loadLanguage('eng+tha');
       await worker.initialize('eng+tha');
       updateLog("Tesseract worker initialized successfully.");
-      worker.terminate(); // Free up resources after checking the initialization
+      worker.terminate(); // Terminate after checking initialization
     } catch (error) {
       updateLog(`Error initializing Tesseract worker: ${error.message}`);
       console.error("Tesseract Worker Init Error:", error);
     }
-  };
+  }, [workerOptions]);
+
+  useEffect(() => {
+    updateLog(`Latest commit message: ${commitMessage}`);
+    initializeTesseractWorker();
+  }, [commitMessage, initializeTesseractWorker]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -40,10 +45,6 @@ const App = () => {
       setImage(URL.createObjectURL(file));
       setLog(`Image selected: ${file.name}`);
     }
-  };
-
-  const updateLog = (message) => {
-    setLog((prevLog) => `${prevLog}\n${message}`);
   };
 
   const scanImage = () => {
