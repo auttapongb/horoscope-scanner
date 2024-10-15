@@ -1,4 +1,6 @@
 // ocrWorker.js
+/* eslint-disable no-restricted-globals, no-undef */
+
 import Tesseract from 'tesseract.js';
 
 globalThis.onmessage = async (e) => {
