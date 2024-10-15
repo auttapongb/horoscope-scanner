@@ -1,27 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import Tesseract from 'tesseract.js';
 import './App.css';
-
 const App = () => {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [log, setLog] = useState('');
-
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
-
-  // Define paths to worker files using absolute paths for Netlify compatibility
- 
-
-  const workerOptions = useMemo(() => ({
-    workerPath: 'https://cdn.jsdelivr.net/gh/naptha/tesseract.js@v2.1.1/dist/worker.min.js',
-    corePath: 'https://cdn.jsdelivr.net/gh/naptha/tesseract.js-core@v0.1.0/tesseract-core.wasm.js',
-    langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@4.0.0_best/eng.traineddata',
-  }), []);
-  
-
-  const updateLog = (message) => {
-    setLog((prevLog) => `${prevLog}\n${message}`);
-  };
 
   useEffect(() => {
     updateLog(`Latest commit message: ${commitMessage}`);
@@ -34,127 +19,85 @@ const App = () => {
       setLog(`Image selected: ${file.name}`);
     }
   };
-
+  const updateLog = (message) => {
+    setLog((prevLog) => `${prevLog}\n${message}`);
+  };
   const scanImage = () => {
     if (!image) {
       updateLog("No image selected.");
       return;
     }
-
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = image;
-
     img.onload = () => {
       updateLog("Image loaded successfully.");
-
-      const maxDimension = 300;
-      const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
-      const width = img.width * scale;
-      const height = img.height * scale;
-
       const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = img.width;
+      canvas.height = img.height;
       const ctx = canvas.getContext("2d");
-
       ctx.filter = 'contrast(200%) brightness(150%)';
-      ctx.drawImage(img, 0, 0, width, height);
-
+      ctx.drawImage(img, 0, 0);
       canvas.toBlob((blob) => {
-        if (!blob) {
-          updateLog("Failed to convert canvas to blob. Blob is null.");
-          setLoading(false);
-          return;
+        if (blob) {
+          const imageURL = URL.createObjectURL(blob);
+          updateLog("Canvas converted to blob. Starting OCR...");
+          setLoading(true);
+          Tesseract.recognize(imageURL, 'eng+tha', {
+            tessedit_char_whitelist: '0123456789- .',
+            psm: 6,
+          })
+            .then(({ data: { text } }) => {
+              updateLog(`OCR completed. Raw text:\n****************************************`);
+              
+              const lines = text.split('\n');
+              lines.forEach((line, index) => {
+                updateLog(`L${index + 1}: ${line}`);
+              });
+              updateLog(`*******************************************************`);
+              const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
+              updateLog(`Cleaned OCR text:\n${cleanedText}`);
+              const phoneNumbers = new Set();
+              lines.forEach((line, index) => {
+                updateLog(`Analyzing line ${index + 1}: ${line}`);
+                const words = line.split(' ');
+                words.forEach((word) => {
+                  // Refined regex pattern to capture mobile and landline numbers with various delimiters
+                  const numberRegex = /^0(6|8|9)\d{1}([-.\s]?\d{3}[-.\s]?\d{4})$|^0(6|8|9)\d{1}([-.\s]?\d{4}[-.\s]?\d{3})$|^02([-.\s]?\d{3}[-.\s]?\d{4})$|^0[3-9]\d{1}([-.\s]?\d{3}[-.\s]?\d{4})$/;
+
+                  if (numberRegex.test(word)) {
+                    phoneNumbers.add(word);
+                    updateLog(`Matched mobile/landline number: ${word}`);
+                  }
+                });
+              });
+              const detectedNumbers = Array.from(phoneNumbers);
+              detectedNumbers.forEach((number, idx) => {
+                updateLog(`Detected mobile number ${idx + 1}: ${number}`);
+              });
+              const processedResults = detectedNumbers.map((num) => ({
+                number: num,
+                sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
+              }));
+              setResults(processedResults);
+              setLoading(false);
+              updateLog(`Total mobile numbers found: ${detectedNumbers.length}`);
+            })
+            .catch((err) => {
+              console.error("Tesseract error:", err);
+              updateLog(`Error during OCR processing: ${err.message}`);
+              setLoading(false);
+            });
+        } else {
+          updateLog("Failed to convert canvas to blob.");
         }
-
-        const imageURL = URL.createObjectURL(blob);
-        updateLog("Canvas converted to blob. Starting OCR in separate thread...");
-        updateLog(`Worker Options - Worker Path: ${workerOptions.workerPath}, Core Path: ${workerOptions.corePath}`);
-
-        const worker = new Worker(new URL('./ocrWorker.js', import.meta.url));
-
-        // Add error handler for the worker
-        worker.onerror = (error) => {
-          updateLog(`Worker error: ${error.message}`);
-          setLoading(false);
-        };
-
-        const ocrTimeout = setTimeout(() => {
-          updateLog("OCR process timed out. Try a smaller or simpler image.");
-          setLoading(false);
-          worker.terminate();
-        }, 15000); // Timeout after 15 seconds
-
-        worker.onmessage = (e) => {
-          const { type, message, result, error } = e.data;
-          if (type === 'progress') {
-            updateLog(`Tesseract log: ${message.status} - ${Math.round(message.progress * 100)}%`);
-            clearTimeout(ocrTimeout); // Clear timeout on progress
-          } else if (type === 'result') {
-            clearTimeout(ocrTimeout);
-            updateLog("OCR completed successfully.");
-            processOCRText(result);
-            worker.terminate();
-          } else if (type === 'error') {
-            clearTimeout(ocrTimeout);
-            updateLog(`Error during OCR processing: ${error}`);
-            setLoading(false);
-            worker.terminate();
-          }
-        };
-
-        worker.postMessage({ imageURL, workerOptions });
-        setLoading(true);
-      }, 'image/png');
+      }, "image/png");
     };
-
     img.onerror = (err) => {
+      console.error("Image load error:", err);
       updateLog("Failed to load image. Please try a different image.");
-      console.error("Image Load Error:", err);
     };
   };
-
-  const processOCRText = (text) => {
-    const lines = text.split('\n');
-    lines.forEach((line, index) => {
-      updateLog(`L${index + 1}: ${line}`);
-    });
-    updateLog("*******************************************************");
-
-    const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
-    updateLog(`Cleaned OCR text:\n${cleanedText}`);
-
-    const phoneNumbers = new Set();
-
-    lines.forEach((line, index) => {
-      updateLog(`Analyzing line ${index + 1}: ${line}`);
-      const words = line.split(' ');
-      words.forEach((word) => {
-        updateLog(`Checking word: "${word}"`);
-        const numberRegex = /^0\d([-.\s]?\d){8,9}$/;
-
-        if (numberRegex.test(word)) {
-          phoneNumbers.add(word);
-          updateLog(`Matched mobile/landline number: ${word}`);
-        }
-      });
-    });
-
-    const detectedNumbers = Array.from(phoneNumbers);
-    detectedNumbers.forEach((number, idx) => {
-      updateLog(`Detected mobile number ${idx + 1}: ${number}`);
-    });
-
-    const processedResults = detectedNumbers.map((num) => ({
-      number: num,
-      sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
-    }));
-    setResults(processedResults);
-    setLoading(false);
-    updateLog(`Total mobile numbers found: ${detectedNumbers.length}`);
-  };
-
   return (
     <div className="app">
       <h1>Horoscope Scanner</h1>
@@ -173,11 +116,8 @@ const App = () => {
         </button>
         {image && <img src={image} alt="Selected to scan" />}
       </div>
-
       <div className="results">
-        {results.length > 0 && (
-          <h2>Scanned Numbers & Their Sums</h2>
-        )}
+        {results.length > 0 && <h2>Scanned Numbers & Their Sums</h2>}
         <ul>
           {results.map((result, index) => (
             <li key={index}>
@@ -186,7 +126,6 @@ const App = () => {
           ))}
         </ul>
       </div>
-
       <div className="log-section">
         <h2>Logs</h2>
         <pre>{log}</pre>
@@ -194,5 +133,4 @@ const App = () => {
     </div>
   );
 };
-
 export default App;
