@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Tesseract from 'tesseract.js';
 import './App.css';
 
 const App = () => {
@@ -21,24 +20,9 @@ const App = () => {
     setLog((prevLog) => `${prevLog}\n${message}`);
   };
 
-  const initializeTesseractWorker = useCallback(async () => {
-    try {
-      const worker = Tesseract.createWorker(workerOptions);
-      await worker.load();
-      await worker.loadLanguage('eng+tha');
-      await worker.initialize('eng+tha');
-      updateLog("Tesseract worker initialized successfully.");
-      worker.terminate();
-    } catch (error) {
-      updateLog(`Error initializing Tesseract worker: ${error.message}`);
-      console.error("Tesseract Worker Init Error:", error);
-    }
-  }, [workerOptions]);
-
   useEffect(() => {
     updateLog(`Latest commit message: ${commitMessage}`);
-    initializeTesseractWorker();
-  }, [commitMessage, initializeTesseractWorker]);
+  }, [commitMessage]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -61,8 +45,7 @@ const App = () => {
     img.onload = () => {
       updateLog("Image loaded successfully.");
 
-      // Reduce image size for performance
-      const maxDimension = 600; // Reduce to improve performance
+      const maxDimension = 600;
       const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
       const width = img.width * scale;
       const height = img.height * scale;
@@ -83,31 +66,27 @@ const App = () => {
         }
 
         const imageURL = URL.createObjectURL(blob);
-        updateLog("Canvas converted to blob. Starting OCR...");
+        updateLog("Canvas converted to blob. Starting OCR in separate thread...");
 
-        setLoading(true);
+        const worker = new Worker(new URL('./ocrWorker.js', import.meta.url));
 
-        try {
-          Tesseract.recognize(imageURL, 'eng+tha', {
-            ...workerOptions,
-            tessedit_char_whitelist: '0123456789- .',
-            psm: 7, // Treat as a single line of text for faster processing
-            logger: (message) => updateLog(`Tesseract log: ${message.status} - ${Math.round(message.progress * 100)}%`)
-          })
-          .then(({ data: { text } }) => {
+        worker.onmessage = (e) => {
+          const { type, message, result, error } = e.data;
+          if (type === 'progress') {
+            updateLog(`Tesseract log: ${message.status} - ${Math.round(message.progress * 100)}%`);
+          } else if (type === 'result') {
             updateLog("OCR completed successfully.");
-            processOCRText(text);
-          })
-          .catch((err) => {
-            updateLog(`Error during OCR processing: ${err.message || 'Unknown error'}`);
-            console.error("Tesseract OCR Error:", err);
+            processOCRText(result);
+            worker.terminate();
+          } else if (type === 'error') {
+            updateLog(`Error during OCR processing: ${error}`);
             setLoading(false);
-          });
-        } catch (error) {
-          updateLog(`Unexpected error during OCR processing: ${error.message}`);
-          console.error("Unexpected OCR Error:", error);
-          setLoading(false);
-        }
+            worker.terminate();
+          }
+        };
+
+        worker.postMessage({ imageURL, workerOptions });
+        setLoading(true);
       }, 'image/png');
     };
 
