@@ -7,12 +7,32 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [log, setLog] = useState('');
-
+  
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
+  const workerOptions = {
+    workerPath: './tesseract-files/worker.min.js',
+    corePath: './tesseract-files/tesseract-core.wasm.js',
+    langPath: './tesseract-files',
+  };
 
   useEffect(() => {
     updateLog(`Latest commit message: ${commitMessage}`);
+    initializeTesseractWorker();
   }, [commitMessage]);
+
+  const initializeTesseractWorker = async () => {
+    try {
+      const worker = Tesseract.createWorker(workerOptions);
+      await worker.load();
+      await worker.loadLanguage('eng+tha');
+      await worker.initialize('eng+tha');
+      updateLog("Tesseract worker initialized successfully.");
+      worker.terminate(); // Free up resources after checking the initialization
+    } catch (error) {
+      updateLog(`Error initializing Tesseract worker: ${error.message}`);
+      console.error("Tesseract Worker Init Error:", error);
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -39,7 +59,6 @@ const App = () => {
     img.onload = () => {
       updateLog("Image loaded successfully.");
 
-      // Resize the image to a manageable size
       const maxDimension = 800;
       const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
       const width = img.width * scale;
@@ -51,7 +70,7 @@ const App = () => {
       const ctx = canvas.getContext("2d");
 
       ctx.filter = 'contrast(200%) brightness(150%)';
-      ctx.drawImage(img, 0, 0, width, height); // Resize image while drawing onto the canvas
+      ctx.drawImage(img, 0, 0, width, height);
 
       canvas.toBlob((blob) => {
         if (!blob) {
@@ -67,9 +86,7 @@ const App = () => {
 
         try {
           Tesseract.recognize(imageURL, 'eng+tha', {
-            workerPath: './tesseract-files/worker.min.js',
-            corePath: './tesseract-files/tesseract-core.wasm.js',
-            langPath: './tesseract-files',
+            ...workerOptions,
             tessedit_char_whitelist: '0123456789- .',
             psm: 6,
             logger: (message) => updateLog(`Tesseract log: ${JSON.stringify(message)}`)
@@ -79,20 +96,21 @@ const App = () => {
             processOCRText(text);
           })
           .catch((err) => {
-            console.error("Tesseract error:", err);
             updateLog(`Error during OCR processing: ${err.message || 'Unknown error'}`);
+            console.error("Tesseract OCR Error:", err);
             setLoading(false);
           });
         } catch (error) {
           updateLog(`Unexpected error during OCR processing: ${error.message}`);
+          console.error("Unexpected OCR Error:", error);
           setLoading(false);
         }
       }, 'image/png');
     };
 
     img.onerror = (err) => {
-      console.error("Image load error:", err);
       updateLog("Failed to load image. Please try a different image.");
+      console.error("Image Load Error:", err);
     };
   };
 
@@ -113,8 +131,6 @@ const App = () => {
       const words = line.split(' ');
       words.forEach((word) => {
         updateLog(`Checking word: "${word}"`);
-
-        // Regex for Thai phone numbers with flexible separators and lengths
         const numberRegex = /^0\d([-.\s]?\d){8,9}$/;
 
         if (numberRegex.test(word)) {
