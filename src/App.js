@@ -67,9 +67,9 @@ const App = () => {
 
         try {
           Tesseract.recognize(imageURL, 'eng+tha', {
-            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/worker.min.js',
-            langPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/lang',
-            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@0.1.0/tesseract-core.wasm.js',
+            workerPath: './tesseract-files/worker.min.js',
+            corePath: './tesseract-files/tesseract-core.wasm.js',
+            langPath: './tesseract-files',
             tessedit_char_whitelist: '0123456789- .',
             psm: 6,
             logger: (message) => updateLog(`Tesseract log: ${JSON.stringify(message)}`)
@@ -80,7 +80,7 @@ const App = () => {
           })
           .catch((err) => {
             console.error("Tesseract error:", err);
-            updateLog(`Error during OCR processing: ${err.message}`);
+            updateLog(`Error during OCR processing: ${err.message || 'Unknown error'}`);
             setLoading(false);
           });
         } catch (error) {
