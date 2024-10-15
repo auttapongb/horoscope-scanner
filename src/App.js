@@ -38,13 +38,20 @@ const App = () => {
 
     img.onload = () => {
       updateLog("Image loaded successfully.");
+      
+      // Resize the image to a manageable size
+      const maxDimension = 1000;
+      const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
+      const width = img.width * scale;
+      const height = img.height * scale;
+
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
 
       ctx.filter = 'contrast(200%) brightness(150%)';
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, width, height);
 
       canvas.toBlob((blob) => {
         if (blob) {
@@ -53,58 +60,66 @@ const App = () => {
 
           setLoading(true);
 
-          Tesseract.recognize(imageURL, 'eng+tha', {
-            tessedit_char_whitelist: '0123456789- .',
-            psm: 6,
-          })
-            .then(({ data: { text } }) => {
-              updateLog(`OCR completed. Raw text:\n****************************************`);
-              
-              const lines = text.split('\n');
-              lines.forEach((line, index) => {
-                updateLog(`L${index + 1}: ${line}`);
-              });
-              updateLog(`*******************************************************`);
-
-              const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
-              updateLog(`Cleaned OCR text:\n${cleanedText}`);
-
-              const phoneNumbers = new Set();
-
-              lines.forEach((line, index) => {
-                updateLog(`Analyzing line ${index + 1}: ${line}`);
-                const words = line.split(' ');
-                words.forEach((word) => {
-                  updateLog(`Checking word: "${word}"`);
-
-                  // Regex for Thai phone numbers with flexible separators and lengths
-                  const numberRegex = /^0\d([-.\s]?\d){8,9}$/;
-
-                  if (numberRegex.test(word)) {
-                    phoneNumbers.add(word);
-                    updateLog(`Matched mobile/landline number: ${word}`);
-                  }
-                });
-              });
-
-              const detectedNumbers = Array.from(phoneNumbers);
-              detectedNumbers.forEach((number, idx) => {
-                updateLog(`Detected mobile number ${idx + 1}: ${number}`);
-              });
-
-              const processedResults = detectedNumbers.map((num) => ({
-                number: num,
-                sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
-              }));
-              setResults(processedResults);
-              setLoading(false);
-              updateLog(`Total mobile numbers found: ${detectedNumbers.length}`);
+          try {
+            Tesseract.recognize(imageURL, 'eng+tha', {
+              workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/worker.min.js',
+              langPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/lang',
+              corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@0.1.0/tesseract-core.wasm.js',
+              tessedit_char_whitelist: '0123456789- .',
+              psm: 6,
             })
-            .catch((err) => {
-              console.error("Tesseract error:", err);
-              updateLog(`Error during OCR processing: ${err.message}`);
-              setLoading(false);
-            });
+              .then(({ data: { text } }) => {
+                updateLog(`OCR completed. Raw text:\n****************************************`);
+                
+                const lines = text.split('\n');
+                lines.forEach((line, index) => {
+                  updateLog(`L${index + 1}: ${line}`);
+                });
+                updateLog(`*******************************************************`);
+
+                const cleanedText = text.replace(/[^0-9\s-]/g, ' ').replace(/\s+/g, ' ');
+                updateLog(`Cleaned OCR text:\n${cleanedText}`);
+
+                const phoneNumbers = new Set();
+
+                lines.forEach((line, index) => {
+                  updateLog(`Analyzing line ${index + 1}: ${line}`);
+                  const words = line.split(' ');
+                  words.forEach((word) => {
+                    updateLog(`Checking word: "${word}"`);
+
+                    // Regex for Thai phone numbers with flexible separators and lengths
+                    const numberRegex = /^0\d([-.\s]?\d){8,9}$/;
+
+                    if (numberRegex.test(word)) {
+                      phoneNumbers.add(word);
+                      updateLog(`Matched mobile/landline number: ${word}`);
+                    }
+                  });
+                });
+
+                const detectedNumbers = Array.from(phoneNumbers);
+                detectedNumbers.forEach((number, idx) => {
+                  updateLog(`Detected mobile number ${idx + 1}: ${number}`);
+                });
+
+                const processedResults = detectedNumbers.map((num) => ({
+                  number: num,
+                  sum: num.replace(/\D/g, '').split('').reduce((acc, curr) => acc + parseInt(curr), 0),
+                }));
+                setResults(processedResults);
+                setLoading(false);
+                updateLog(`Total mobile numbers found: ${detectedNumbers.length}`);
+              })
+              .catch((err) => {
+                console.error("Tesseract error:", err);
+                updateLog(`Error during OCR processing: ${err.message}`);
+                setLoading(false);
+              });
+          } catch (error) {
+            updateLog(`Unexpected error: ${error.message}`);
+            setLoading(false);
+          }
         } else {
           updateLog("Failed to convert canvas to blob.");
         }
