@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Tesseract from 'tesseract.js';
 import './App.css';
 
@@ -9,17 +9,18 @@ const App = () => {
   const [log, setLog] = useState('');
 
   const commitMessage = process.env.REACT_APP_COMMIT_MESSAGE || "Commit message unavailable";
-  const workerOptions = {
+
+  // Memoize workerOptions to avoid re-creation on every render
+  const workerOptions = useMemo(() => ({
     workerPath: './tesseract-files/worker.min.js',
     corePath: './tesseract-files/tesseract-core.wasm.js',
     langPath: './tesseract-files',
-  };
+  }), []);
 
   const updateLog = (message) => {
     setLog((prevLog) => `${prevLog}\n${message}`);
   };
 
-  // Wrap initializeTesseractWorker with useCallback to avoid unnecessary re-runs
   const initializeTesseractWorker = useCallback(async () => {
     try {
       const worker = Tesseract.createWorker(workerOptions);
@@ -27,7 +28,7 @@ const App = () => {
       await worker.loadLanguage('eng+tha');
       await worker.initialize('eng+tha');
       updateLog("Tesseract worker initialized successfully.");
-      worker.terminate(); // Terminate after checking initialization
+      worker.terminate();
     } catch (error) {
       updateLog(`Error initializing Tesseract worker: ${error.message}`);
       console.error("Tesseract Worker Init Error:", error);
